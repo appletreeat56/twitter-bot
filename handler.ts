@@ -1,38 +1,41 @@
-import { APIGatewayEvent } from "aws-lambda";
+import { APIGatewayProxyHandler } from "aws-lambda";
 import "source-map-support/register";
-import Pdf from "./src/utils/pdf";
-import { pdfText, result } from "./src/interface/pdfText";
-import axios from "axios";
-import { badRequest, okResponse, errorResponse } from "./src/utils/responses";
-
-export const findKeywordInPDF = async (
-  event: APIGatewayEvent,
-  _context
-) => {
-  const searchResult: Array<result> = [];
+import { twitterClient } from "./src/util/twitterApiClient";
+import { getJokeImage, getJokeTweet } from "./src/util/joke";
+import { AxiosResponse } from "axios";
+import { MediaUpload } from "twitter-api-client";
+export const twitterJokesBot: APIGatewayProxyHandler = async (_event, _context) => {
+  let tweet: string = "";
 
   try {
-    if (!event.queryStringParameters?.pdfUrl || !event.queryStringParameters?.keywords) {
-      return badRequest;
-    }
+    //get Joke
+    tweet = await getJokeTweet();
 
-    const pdfFile = await axios.get(event.queryStringParameters.pdfUrl, {
-      responseType: "arraybuffer",
+    const image: AxiosResponse = await getJokeImage();
+
+    //Upload media to twitter
+    const media: MediaUpload = await twitterClient.media.mediaUpload({
+      media: Buffer.from(image.data, "binary").toString("base64"),
     });
 
-    const pdfText: pdfText[] = await Pdf.getPDFText(pdfFile.data);
-    const keywords: Array<string> = event.queryStringParameters?.keywords?.split("|");
-
-    for (let keyword of keywords) {
-      searchResult.push({
-        keyword,
-        searchResult: await Pdf.searchPage(pdfText, keyword),
-      });
-    }
-
-    return okResponse(searchResult)
-   
+    //Send a tweet with joke and media
+    await twitterClient.tweets.statusesUpdate({
+      status: tweet,
+      media_ids: media.media_id_string,
+    });
   } catch (error) {
-    return errorResponse(error);
+    console.log(error);
   }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        joke: tweet,
+        length: tweet.length
+      },
+      null,
+      2
+    ),
+  };
 };

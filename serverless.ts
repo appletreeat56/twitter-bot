@@ -1,7 +1,7 @@
 import type { AWS } from '@serverless/typescript';
 
 const serverlessConfiguration: AWS = {
-  service: 'pdftextsearch',
+  service: 'twitter-bot',
   frameworkVersion: '2',
   custom: {
     webpack: {
@@ -22,13 +22,13 @@ const serverlessConfiguration: AWS = {
     },
   },
   functions: {
-    findKeywordInPDF: {
-      handler: 'handler.findKeywordInPDF',
+    twitterJokesBot: {
+      handler: 'handler.twitterJokesBot',
       events: [
         {
           http: {
             method: 'get',
-            path: 'findKeywordInPDF',
+            path: 'twitterJokesBot',
           }
         }
       ]
